@@ -113,10 +113,17 @@ Global Average Pooling replaces Flatten, reducing parameters and providing impli
 | Hardware | Google Colab T4 GPU |
 
 ---
-
-## SMOTE Augmentation
+## Focal Loss
 
 ![Focal Loss](figures/fig_focal_loss.png)
+
+Focal loss down-weights easy, well-classified examples so the model focuses on hard 
+minority class examples. With γ=2.0, a Normal beat at 95% confidence contributes only 
+0.25% of standard cross-entropy loss. A Fusion beat at 20% confidence retains 64%.
+
+---
+
+## SMOTE Augmentation
 
 | Class | Before SMOTE | After SMOTE | Change |
 |-------|-------------|-------------|--------|
