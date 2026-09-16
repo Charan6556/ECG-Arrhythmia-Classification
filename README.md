@@ -53,6 +53,16 @@ The following values are copied directly from the saved notebook output for the 
 
 Accuracy is influenced by the large Normal class. Macro F1 is therefore the more informative single-number summary for minority-class performance.
 
+### Training behavior
+
+The recorded training run converged after 57 epochs. The early validation spikes are one reason the final test metrics and the evaluation limitation below should be reported together.
+
+![Training and validation loss and accuracy curves](figures/training_curves.png)
+
+### Confusion matrix
+
+![Five-class test-set confusion matrix](figures/confusion_matrix.png)
+
 ### Evaluation limitation
 
 In the recorded run, SMOTE was applied before the training/validation split. The official test CSV remained untouched, but the validation score used for early stopping may be optimistic because synthetic neighbors can appear across the training and validation subsets. A stricter follow-up experiment should split first, apply SMOTE only to the training subset, and preferably evaluate with a patient-independent split.
@@ -71,6 +81,16 @@ The notebook also contains one exploratory Samsung Health PDF example. Its saved
 | Predictions above 80% confidence | 12 |
 
 These values are pipeline outputs, not clinically verified labels. A dominant N prediction does not by itself establish normal sinus rhythm, and maximum-softmax probabilities should not be interpreted as calibrated medical confidence.
+
+### Reconstructed ECG
+
+![Reconstructed, filtered, and normalized ECG trace](figures/reconstructed_ecg.png)
+
+### Representative beat windows
+
+The figure below shows the first ten resampled heartbeat windows and the model's recorded class predictions. The first window was predicted as V at 56.9% confidence; the remaining displayed windows were predicted as N.
+
+![First ten reconstructed heartbeat windows](figures/beat_windows.png)
 
 ## Method
 
