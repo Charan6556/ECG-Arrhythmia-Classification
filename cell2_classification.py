@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-SAVE_DIR  = '/content/ecg_images/'
+SAVE_DIR = os.environ.get('ECG_OUTPUT_DIR', 'ecg_images')
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 class_names  = ['N (Normal)', 'S (SVEB)', 'V (VEB)', 'F (Fusion)', 'Q (Unknown)']
@@ -19,7 +19,10 @@ class_colors = {0: 'green', 1: 'royalblue', 2: 'red', 3: 'orange', 4: 'purple'}
 SEG_LEN   = 187
 TARGET_FS = 125
 
-# Calculate RR interval from detected peaks
+# Calculate the mean R-R interval from detected peaks
+if len(r_peaks) < 2:
+    raise ValueError('At least two R-peaks are required for beat classification.')
+
 mean_rr  = int(np.mean(np.diff(r_peaks)))
 WIN_SIZE = int(mean_rr * 0.80)   # 80% of RR — one beat only, no overlap
 PRE      = WIN_SIZE // 3          # peak sits at 1/3 from left
@@ -55,6 +58,9 @@ for peak in r_peaks:
     segments.append(seg_resampled)
     valid_peaks.append(peak)
 
+if not segments:
+    raise ValueError('No complete heartbeat windows were extracted from the ECG.')
+
 segments    = np.array(segments)
 valid_peaks = np.array(valid_peaks)
 print(f"\n  Valid segments   : {len(segments)}")
@@ -70,14 +76,14 @@ print(f"  ✓ {len(y_pred)} beats classified")
 unique, counts = np.unique(y_pred, return_counts=True)
 dominant_class = unique[np.argmax(counts)]
 
-diagnosis_map = {
-    0: "Normal Sinus Rhythm",
-    1: "Supraventricular Ectopic Beats Detected",
-    2: "Ventricular Ectopic Beats Detected",
-    3: "Fusion Beats Detected",
-    4: "Unknown / Paced Beats Detected"
+model_summary_map = {
+    0: "Predominantly N-class beats",
+    1: "S-class beats detected",
+    2: "V-class beats detected",
+    3: "F-class beats detected",
+    4: "Q-class beats detected"
 }
-diagnosis    = diagnosis_map[dominant_class]
+model_summary    = model_summary_map[dominant_class]
 dominant_bpm = TARGET_FS * 60 / mean_rr
 
 # Per-beat results table
@@ -100,7 +106,7 @@ print(f"  Detected BPM     : {dominant_bpm:.1f}")
 print(f"  Mean confidence  : {conf.mean()*100:.1f}%")
 print(f"  High conf >80%   : {(conf > 0.8).sum()} beats")
 print(f"  Low  conf <50%   : {(conf < 0.5).sum()} beats")
-print(f"\n  Diagnosis        : {diagnosis}")
+print(f"\n  Model summary        : {model_summary}")
 print("=" * 45)
 
 # FIGURE 1: Annotated ECG
@@ -116,7 +122,7 @@ ax.set_title(
     f'Galaxy Watch ECG — CNN Per-Beat Classification\n'
     f'BPM: {dominant_bpm:.1f}  |  '
     f'Beats: {len(y_pred)}  |  '
-    f'Diagnosis: {diagnosis}',
+    f'Model summary: {model_summary}',
     fontsize=11
 )
 ax.set_xlabel('Samples (@125 Hz)'); ax.set_ylabel('Amplitude')
@@ -172,7 +178,7 @@ plt.suptitle(
     f'BPM: {dominant_bpm:.1f}  |  '
     f'Total beats: {len(y_pred)}  |  '
     f'Mean confidence: {conf.mean()*100:.1f}%  |  '
-    f'Diagnosis: {diagnosis}',
+    f'Model summary: {model_summary}',
     fontsize=10
 )
 plt.tight_layout()
@@ -181,5 +187,6 @@ plt.show()
 print("  ✓ Saved: ecg_confidence.png")
 
 print(f"\n{'='*45}")
-print(f"  Final Diagnosis: {diagnosis}")
+print(f"  Final Model summary: {model_summary}")
 print(f"{'='*45}")
+

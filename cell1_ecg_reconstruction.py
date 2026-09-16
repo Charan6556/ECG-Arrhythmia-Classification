@@ -3,18 +3,22 @@
 # M.S. Electrical Engineering, Colorado State University
 # April 2026
 
-!pip install pdfplumber opencv-python-headless scipy -q
+# Install dependencies with: pip install -r requirements.txt
 
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import pdfplumber
 import cv2
 from scipy.signal import butter, filtfilt, resample, find_peaks
 from PIL import Image
 import io
+import os
 
-PDF_PATH = '/content/TEST3.pdf'
+PDF_PATH = os.environ.get('ECG_PDF_PATH', 'your_ecg_export.pdf')
+if not os.path.exists(PDF_PATH):
+    raise FileNotFoundError(
+        f'ECG PDF not found: {PDF_PATH}. Set ECG_PDF_PATH or update PDF_PATH.'
+    )
 
 # 1. Extract Page Image
 with pdfplumber.open(PDF_PATH) as pdf:
@@ -97,7 +101,6 @@ plt.tight_layout(); plt.show()
 # 6. R-Peak Detection
 r_peaks, _ = find_peaks(ecg_norm, height=0.45, distance=45, prominence=0.2)
 print(f'R-peaks detected : {len(r_peaks)}')
-print(f'Expected (~108 bpm × 30s) : ~{int(108*30/60)} beats')
 
 plt.figure(figsize=(16, 3))
 plt.plot(ecg_norm, color='steelblue', linewidth=0.7, label='ECG')
@@ -122,3 +125,4 @@ for peak in r_peaks:
 segments    = np.array(segments)
 valid_peaks = np.array(valid_peaks)
 print(f'Valid segments: {len(segments)}')
+

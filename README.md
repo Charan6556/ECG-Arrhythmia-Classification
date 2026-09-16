@@ -1,286 +1,187 @@
 # ECG Arrhythmia Classification
 
-![Python](https://img.shields.io/badge/Python-3.9+-blue)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-2.10+-orange)
-![License](https://img.shields.io/badge/License-MIT-green)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
+[![TensorFlow](https://img.shields.io/badge/TensorFlow-2.x-orange)](https://www.tensorflow.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-1D CNN for ECG arrhythmia classification with SMOTE and focal loss, validated on a Samsung Galaxy Watch 8 Classic via a novel PDF digitization pipeline.
+A 1D convolutional neural network for five-class heartbeat classification, plus an experimental computer-vision pipeline that reconstructs a single-lead ECG trace from a Samsung Health PDF export.
 
----
+> **Research-use disclaimer:** This repository is an educational machine-learning project. It is not a medical device and must not be used to diagnose, treat, or rule out a medical condition. The wearable example is a single exploratory case study, not clinical validation.
 
-## Results at a Glance
+## Highlights
 
-| Metric | Value |
-|--------|-------|
-| Test Accuracy | 98.44% |
-| Macro F1-Score | 0.9153 |
-| Weighted F1-Score | 0.9843 |
-| AUC-ROC | 0.9925 |
-| Model Parameters | 307,333 |
-| Training Time | ~8 minutes on Google Colab T4 GPU |
-| Baseline (Random Forest) | 29.27% |
+- Five AAMI-aligned heartbeat categories: N, S, V, F, and Q
+- Band-pass filtering and per-beat normalization
+- SMOTE augmentation for minority classes
+- 1D CNN trained with focal loss
+- PDF trace extraction using HSV masking and pixel-centroid tracking
+- Per-beat prediction summaries and confidence visualizations
 
----
+## Repository contents
 
-## Annotated ECG — Galaxy Watch 8 Classification
+| File | Purpose |
+|---|---|
+| `AI_BASED_ARRHYTHMIA_DETECTION_FROM_ECG_SIGNALS.ipynb` | Complete training, PDF reconstruction, and inference workflow |
+| `train_model.py` | Model training and benchmark evaluation |
+| `cell1_ecg_reconstruction.py` | Samsung Health PDF trace extraction and R-peak detection |
+| `cell2_classification.py` | Per-beat classification for a reconstructed ECG |
+| `requirements.txt` | Python dependencies |
+| `DATA_LICENSE.md` | Dataset provenance, licensing, and citation notes |
 
-![ECG Classification](figures/ecg_classification.png)
+## Recorded benchmark results
 
-**45 beats detected at 93.8 bpm — Diagnosis: Normal Sinus Rhythm (97.8% Normal)**
+The following values are copied directly from the saved notebook output for the 21,892-sample test set. They describe one recorded run and may vary slightly when retrained.
 
----
+| Metric | Recorded value |
+|---|---:|
+| Test accuracy | 98.52% |
+| Macro F1-score | 0.9184 |
+| Weighted F1-score | 0.9852 |
+| Macro one-vs-rest ROC AUC | 0.9936 |
+| Model parameters | 307,333 |
+| Completed epochs | 57 of 80 |
 
-## The Problem This Project Solves
+### Per-class test performance
 
-The MIT-BIH Arrhythmia Database has a severe class imbalance. Normal beats make up 82.8% of all training samples. The Fusion class has only 641 samples — a 113:1 ratio.
+| Class | Description | Precision | Recall | F1-score | Support |
+|---|---|---:|---:|---:|---:|
+| N | Normal beat | 0.99 | 0.99 | 0.99 | 18,118 |
+| S | Supraventricular ectopic beat | 0.88 | 0.81 | 0.84 | 556 |
+| V | Ventricular ectopic beat | 0.98 | 0.95 | 0.96 | 1,448 |
+| F | Fusion beat | 0.73 | 0.89 | 0.80 | 162 |
+| Q | Unknown or paced beat | 0.99 | 0.99 | 0.99 | 1,608 |
 
-A model that always predicts Normal gets 82.8% accuracy while never detecting a single arrhythmia. Standard training with class weights achieves 29.27% — worse than the naive baseline — because the model learns to guess minority classes aggressively without actually learning what they look like.
+Accuracy is influenced by the large Normal class. Macro F1 is therefore the more informative single-number summary for minority-class performance.
 
-This project solves it with two techniques working together:
+### Evaluation limitation
 
-**SMOTE** generates synthetic minority class samples by interpolating between real examples in the 187-dimensional feature space. Unlike simple duplication, SMOTE explores the actual shape of each minority class boundary.
+In the recorded run, SMOTE was applied before the training/validation split. The official test CSV remained untouched, but the validation score used for early stopping may be optimistic because synthetic neighbors can appear across the training and validation subsets. A stricter follow-up experiment should split first, apply SMOTE only to the training subset, and preferably evaluate with a patient-independent split.
 
-**Focal Loss** (γ=2.0, α=0.25) down-weights the gradient contribution of easy, well-classified Normal beats. A Normal beat at 95% confidence contributes only 0.25% of its standard cross-entropy loss. A hard Fusion beat at 20% confidence retains 64%.
+## Wearable PDF case study
 
-Neither works alone. SMOTE without focal loss still has gradient dominated by 72,471 Normal beats. Focal loss without SMOTE has almost no genuine minority class data to learn from. Together they are synergistic.
+The notebook also contains one exploratory Samsung Health PDF example. Its saved output reports:
 
----
+| Measurement | Recorded value |
+|---|---:|
+| Detected and classified beats | 33 |
+| Estimated heart rate from mean R-R interval | 68.8 BPM |
+| N predictions | 32 (97.0%) |
+| V predictions | 1 (3.0%) |
+| Mean maximum-softmax confidence | 77.1% |
+| Predictions above 80% confidence | 12 |
 
-## Per-Class Performance
+These values are pipeline outputs, not clinically verified labels. A dominant N prediction does not by itself establish normal sinus rhythm, and maximum-softmax probabilities should not be interpreted as calibrated medical confidence.
 
-| Class | Description | Precision | Recall | F1 | Support |
-|-------|-------------|-----------|--------|----|---------|
-| N | Normal sinus beat | 0.99 | 0.99 | 0.99 | 18,118 |
-| S | Supraventricular ectopic | 0.88 | 0.79 | 0.83 | 556 |
-| V | Ventricular ectopic | 0.98 | 0.95 | 0.96 | 1,448 |
-| F | Fusion beat | 0.72 | 0.90 | 0.80 | 162 |
-| Q | Unknown/Paced | 0.98 | 0.99 | 0.99 | 1,608 |
+## Method
 
-Fusion class recall improved from 0.00 (baseline) to 0.90. Q class from 0.00 to 0.99.
+### Training pipeline
 
----
+1. Download the preprocessed MIT-BIH heartbeat CSV files through `kagglehub`.
+2. Apply a 0.5–40 Hz Butterworth band-pass filter to each 187-sample beat.
+3. Normalize each beat to the `[0, 1]` range.
+4. Augment selected minority classes with SMOTE.
+5. Train a four-block 1D CNN using focal loss and early stopping.
+6. Evaluate once on the untouched test CSV.
 
-## Confusion Matrix and Training Curves
+### Model architecture
 
-![Training Curves](figures/fig_training_curves.png)
-
-![Confusion Matrix](figures/fig_confusion_matrix.png)
-
----
-
-## Model Architecture
-
-```
+```text
 Input (187 × 1)
-      ↓
-Conv1D Block 1 — 64 filters, kernel 5
-      ↓
-Conv1D Block 2 — 128 filters, kernel 5
-      ↓
-Conv1D Block 3 — 256 filters, kernel 3
-      ↓
-Conv1D Block 4 — 128 filters, kernel 3
-      ↓
-Global Average Pooling
-      ↓
-Dense(256) → Dropout(0.4)
-      ↓
-Dense(128) → Dropout(0.3)
-      ↓
-Dense(5) → Softmax
+  → Conv1D(64, kernel=5) + BatchNorm + ReLU + MaxPool + Dropout
+  → Conv1D(128, kernel=5) + BatchNorm + ReLU + MaxPool + Dropout
+  → Conv1D(256, kernel=3) + BatchNorm + ReLU + MaxPool + Dropout
+  → Conv1D(128, kernel=3) + BatchNorm + ReLU + Dropout
+  → GlobalAveragePooling1D
+  → Dense(256) + Dropout
+  → Dense(128) + Dropout
+  → Dense(5, softmax)
 ```
 
-Each convolutional block: Conv1D → Batch Normalisation → ReLU → MaxPooling → Dropout(0.2)
+The early convolutional kernels learn short local waveform patterns. Deeper layers and pooling combine those features across a larger effective receptive field.
 
-**307,333 parameters. Trained from scratch. No pre-training or transfer learning.**
+### PDF reconstruction pipeline
 
-Kernel size 5 in early blocks covers 40ms at 125 Hz — enough to span the complete P wave, QRS complex, and T wave in a single pass.
+1. Render the first PDF page at 300 DPI.
+2. Isolate the orange ECG trace in HSV color space.
+3. Detect the three ECG strips using row-density analysis.
+4. Track the trace centroid column by column and interpolate gaps.
+5. Resample each ten-second strip to 1,250 samples at 125 Hz.
+6. Filter the reconstructed signal, detect R-peaks, and classify beat windows.
 
-Global Average Pooling replaces Flatten, reducing parameters and providing implicit regularisation over the time dimension.
-
----
-
-## Training Details
-
-| Setting | Value |
-|---------|-------|
-| Optimiser | Adam, initial lr 0.001 |
-| Loss | Focal Loss (γ=2.0, α=0.25) |
-| Batch size | 128 |
-| Epochs | 46 of 80 (early stopping) |
-| LR scheduler | ReduceLROnPlateau — halved 6 times |
-| Final LR | 0.0000078 |
-| Hardware | Google Colab T4 GPU |
-
----
-## Focal Loss
-
-![Focal Loss](figures/fig_focal_loss.png)
-
-Focal loss down-weights easy, well-classified examples so the model focuses on hard 
-minority class examples. With γ=2.0, a Normal beat at 95% confidence contributes only 
-0.25% of standard cross-entropy loss. A Fusion beat at 20% confidence retains 64%.
-
----
-
-## SMOTE Augmentation
-
-| Class | Before SMOTE | After SMOTE | Change |
-|-------|-------------|-------------|--------|
-| N (Normal) | 72,471 | 72,471 | unchanged |
-| S (SVEB) | 2,223 | 5,000 | +125% |
-| V (VEB) | 5,788 | 6,000 | +4% |
-| F (Fusion) | 641 | 3,000 | +368% |
-| Q (Unknown) | 6,431 | 7,000 | +9% |
-| **Total** | **87,554** | **93,471** | balanced |
-
-*Training set after SMOTE and validation split: 84,123 samples.*
-
----
-
-## Real-World Validation: Samsung Galaxy Watch 8
-
-Most ECG papers stop at benchmark evaluation. This project went further.
-
-### The Data Access Problem
-
-I tried to access the raw ECG signal from a Samsung Galaxy Watch 8 Classic via ADB on Android 13. A systematic investigation confirmed:
-
-- ADB wireless debugging was enabled and device was successfully paired
-- Full file system search was performed
-- Result: ECG data in protected sandbox — inaccessible without rooting
-
-Samsung Health Monitor only exports a formatted PDF report. No raw signal, no CSV, no API. This is a documented barrier for consumer wearable ECG research.
-
-### The PDF Digitization Pipeline
-
-A five-stage computer vision pipeline was built to reconstruct the ECG signal from the PDF export:
-
-1. **Render PDF at 300 DPI** — 11.8 pixels per mm, enough to track the 1-2px trace
-2. **HSV colour masking** — isolates Samsung Health's orange ECG trace (hue 5° to 25°)
-3. **Strip detection** — finds three 10-second ECG strips by row density analysis
-4. **Pixel centroid tracking** — column-wise centroid extraction with linear interpolation
-5. **FFT resampling** — each strip resampled to 1,250 samples at 125 Hz
-
-Total: 3,750 samples representing 30 seconds of ECG at 125 Hz.
-
-### The Window Overlap Problem
-
-At high heart rates (>80 bpm), the RR interval is shorter than the standard MIT-BIH half-window of 93 samples. A standard 187-sample window captures two beats instead of one, causing the model to misclassify everything as VEB.
-
-**Solution:** Extract 80% of the actual RR interval around each peak and resample to 187 samples. This preserves the QRS morphology within a single beat window without overlapping adjacent beats.
-
-### Galaxy Watch Results
-
-![Beat Windows](figures/ecg_beat_windows.png)
-
-| Class | Beats | Percentage | Mean Confidence |
-|-------|-------|------------|-----------------|
-| N (Normal) | 44 | 97.8% | 84.3% |
-| V (VEB) | 1 | 2.2% | 85.7% |
-| **Total** | **45** | — | **84.3%** |
-
-**Detected BPM: 93.8 — Diagnosis: Normal Sinus Rhythm**
-
-The single VEB occurs at a strip boundary where PDF rendering attenuates the signal. Mean confidence of 84.3% vs near-perfect on MIT-BIH directly quantifies the domain gap introduced by PDF reconstruction.
-
-Result is clinically consistent with Samsung Health's own classification.
-
----
+The extraction thresholds are specific to the tested Samsung Health PDF layout and may require adjustment for other exports or application versions.
 
 ## Dataset
 
-MIT-BIH Arrhythmia Database — [download from Kaggle](https://www.kaggle.com/datasets/shayanfazeli/heartbeat)
+Training uses the preprocessed [ECG Heartbeat Categorization Dataset on Kaggle](https://www.kaggle.com/datasets/shayanfazeli/heartbeat), derived from the [MIT-BIH Arrhythmia Database](https://physionet.org/content/mitdb/1.0.0/).
 
-- 48 half-hour ambulatory ECG recordings from Beth Israel Hospital
-- Independently annotated by two cardiologists
-- 87,554 training samples / 21,892 test samples
-- 187 samples per heartbeat window at 125 Hz
-- 5 classes following AAMI EC57 standard: N, S, V, F, Q
+The CSV derivative contains 187 signal samples plus one class label per row:
 
-Dataset is not included in this repository due to the PhysioNet licence.
+- Training samples: 87,554
+- Test samples: 21,892
+- Sampling rate of the derivative: 125 Hz
 
----
+The original PhysioNet database contains 48 half-hour, two-channel recordings sampled at 360 Hz. The processed CSV representation is therefore not identical to the original waveform files. Dataset files are not redistributed in this repository. See [DATA_LICENSE.md](DATA_LICENSE.md) for licensing and attribution.
 
-## How to Run
+## Installation
 
-**Step 1 — Install dependencies**
+Python 3.10 or 3.11 is recommended.
 
 ```bash
-pip install tensorflow numpy pandas matplotlib scikit-learn imbalanced-learn scipy pdfplumber opencv-python-headless Pillow
+git clone https://github.com/Charan6556/ECG-Arrhythmia-Classification.git
+cd ECG-Arrhythmia-Classification
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
 ```
 
-Or on Google Colab:
+On Windows PowerShell, activate the environment with `.venv\Scripts\Activate.ps1`.
 
-```python
-!pip install pdfplumber opencv-python-headless imbalanced-learn -q
+## Usage
+
+### Complete notebook workflow
+
+Open `AI_BASED_ARRHYTHMIA_DETECTION_FROM_ECG_SIGNALS.ipynb` in Jupyter or Google Colab and run the cells in order. Kaggle authentication may be required for the first dataset download.
+
+### Training script
+
+```bash
+python train_model.py
 ```
 
-**Step 2 — Download the dataset**
+### Wearable PDF workflow
 
-Download from [Kaggle](https://www.kaggle.com/datasets/shayanfazeli/heartbeat) and place `mitbih_train.csv` and `mitbih_test.csv` in your working directory.
+Set the PDF path with the `ECG_PDF_PATH` environment variable (or edit the default in `cell1_ecg_reconstruction.py`), then execute the reconstruction and classification code in the same Python or notebook session so that the trained `model`, `ecg_norm`, and `r_peaks` objects are available. Generated figures are written to `ecg_images/` by default; set `ECG_OUTPUT_DIR` to change that location.
 
-**Step 3 — Train the model**
+Do not commit personal ECG exports, patient identifiers, model credentials, or Kaggle API tokens.
 
-Run the training notebook. The model trains in approximately 8 minutes on a Colab T4 GPU and achieves 98.44% test accuracy.
+## Reproducibility notes
 
-**Step 4 — Test on your Samsung Health ECG PDF**
+- The uploaded notebook has execution outputs cleared to avoid publishing large embedded images or personal ECG content.
+- Numerical results above were transcribed from the preserved local notebook output.
+- The model weights and source Samsung Health PDF are not included.
+- TensorFlow training can vary across hardware and software versions because all operations are not guaranteed to be deterministic.
 
-Update the PDF path in Cell 1 and run both cells:
+## Future work
 
-```python
-PDF_PATH = '/content/your_ecg_export.pdf'
-```
+- Move SMOTE after the training/validation split and rerun all metrics.
+- Add patient-independent evaluation using record identifiers.
+- Report confidence calibration, confidence intervals, and repeated-seed results.
+- Validate the PDF reconstruction pipeline on multiple devices and ECG exports with reference labels.
+- Save versioned model weights and machine-readable experiment metadata.
 
-Cell 1 reconstructs the signal and detects R-peaks.  
-Cell 2 classifies each beat and outputs the diagnosis.
+## Citation
 
----
+When using the underlying MIT-BIH data, cite the database and PhysioNet as requested on the [official dataset page](https://physionet.org/content/mitdb/1.0.0/). The preprocessed CSV dataset is associated with:
 
-## Future Work: ASIC Implementation
-
-The next step is implementing this system as a custom ASIC in Verilog targeting **Skywater 130nm** via the Google Efabless OpenMPW shuttle (free academic fabrication).
-
-**Five chip blocks:**
-
-1. SPI ADC interface — receives samples from AD8232 ECG sensor at 125 Hz
-2. IIR bandpass filter — Direct Form II fixed-point, 0.5 to 40 Hz
-3. R-peak detector — threshold comparator with cooldown counter
-4. CNN accelerator — MAC units, 307,333 INT8 weights in on-chip SRAM
-5. Argmax output — drives class and confidence to GPIO and UART
-
-**Why ASIC:**
-
-- Milliwatt power vs watts on a laptop — enables continuous wearable monitoring
-- Sub-millisecond latency per beat
-- No OS, no Python runtime, no external compute
-
-**Roadmap:**
-
-- Phase 1 (Weeks 1–4): INT8 quantisation via TFLite — 1.2 MB → 300 KB
-- Phase 2 (Weeks 5–12): RTL design and unit verification in VCS + DVE
-- Phase 3 (Weeks 13–16): Full system integration and simulation
-- Phase 4 (Weeks 17–24): Synthesis via OpenLane, physical design, tape-out
-
----
-
-## Tools Used
-
-Python · TensorFlow · NumPy · SciPy · OpenCV · pdfplumber · Scikit-learn · imbalanced-learn · Matplotlib · Google Colab T4 GPU
-
----
+> Kachuee, M., Fazeli, S., & Sarrafzadeh, M. (2018). ECG heartbeat classification: A deep transferable representation. *2018 IEEE International Conference on Healthcare Informatics*.
 
 ## Author
 
-**Charan Gundepinni**  
-M.S. Electrical Engineering — Colorado State University  
-Signal Processing and AI — April 2026  
-LinkedIn: [linkedin.com/in/charan-gundepinni-565712249](https://linkedin.com/in/charan-gundepinni-565712249)
+Charan Gundepinni  
+M.S. Electrical Engineering, Colorado State University  
+[LinkedIn](https://linkedin.com/in/charan-gundepinni-565712249)
 
----
+## License
 
-## Licence
-
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
-
-**Dataset:** The MIT-BIH Arrhythmia Database is used under the [PhysioNet Restricted Health Data License](https://physionet.org/content/mitdb/1.0.0/). The dataset is not included in this repository. Download it from [Kaggle](https://www.kaggle.com/datasets/shayanfazeli/heartbeat).
+The project code and documentation are released under the [MIT License](LICENSE). Dataset files are not covered by the project license; see [DATA_LICENSE.md](DATA_LICENSE.md).

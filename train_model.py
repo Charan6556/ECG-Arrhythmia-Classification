@@ -3,17 +3,14 @@
 # M.S. Electrical Engineering, Colorado State University
 # April 2026
 
-!pip install wfdb scipy imbalanced-learn -q
+# Install dependencies with: pip install -r requirements.txt
 
 import numpy as np
 import pandas as pd
 import os
 import tensorflow as tf
-from tensorflow.keras import layers, models, callbacks
-import tensorflow.keras.backend as K
+from tensorflow.keras import layers, callbacks
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler, LabelEncoder
-from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import (
     accuracy_score, f1_score, classification_report,
     roc_auc_score, confusion_matrix, ConfusionMatrixDisplay
@@ -21,6 +18,10 @@ from sklearn.metrics import (
 from imblearn.over_sampling import SMOTE
 import matplotlib.pyplot as plt
 import kagglehub
+
+RANDOM_SEED = 42
+np.random.seed(RANDOM_SEED)
+tf.random.set_seed(RANDOM_SEED)
 
 # 1. Load Data
 path = kagglehub.dataset_download("shayanfazeli/heartbeat")
@@ -194,3 +195,4 @@ fig, ax = plt.subplots(figsize=(8, 6))
 disp.plot(ax=ax, cmap='Blues', colorbar=False)
 ax.set_title('Confusion Matrix — Improved 1D CNN')
 plt.tight_layout(); plt.show()
+
