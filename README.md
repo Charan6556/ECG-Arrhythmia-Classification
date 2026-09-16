@@ -25,8 +25,16 @@ A 1D convolutional neural network for five-class heartbeat classification, plus 
 | `train_model.py` | Model training and benchmark evaluation |
 | `cell1_ecg_reconstruction.py` | Samsung Health PDF trace extraction and R-peak detection |
 | `cell2_classification.py` | Per-beat classification for a reconstructed ECG |
+| `docs/SPAI_FINAL_PROJECT_REPORT.pdf` | Original submitted academic project report |
+| `docs/REPORT_STATUS.md` | Differences between the submitted report and current repository results |
 | `requirements.txt` | Python dependencies |
 | `DATA_LICENSE.md` | Dataset provenance, licensing, and citation notes |
+
+## Academic report
+
+The [original submitted project report](docs/SPAI_FINAL_PROJECT_REPORT.pdf) is preserved as a historical academic artifact. It documents an earlier experiment and therefore contains different benchmark and wearable-case-study values from the final notebook run.
+
+The current README and notebook are the canonical sources for repository results. See [REPORT_STATUS.md](docs/REPORT_STATUS.md) for the exact differences and interpretation guidance.
 
 ## Recorded benchmark results
 
@@ -179,6 +187,7 @@ Do not commit personal ECG exports, patient identifiers, model credentials, or K
 
 - The uploaded notebook has execution outputs cleared to avoid publishing large embedded images or personal ECG content.
 - Numerical results above were transcribed from the preserved local notebook output.
+- The submitted academic report is retained unchanged and contains results from an earlier run; it is not the canonical result source.
 - The model weights and source Samsung Health PDF are not included.
 - TensorFlow training can vary across hardware and software versions because all operations are not guaranteed to be deterministic.
 
